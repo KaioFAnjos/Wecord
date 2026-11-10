@@ -1,0 +1,71 @@
+name: Build
+
+# Para lançar uma versão nova: npm run release -- 1.1.0
+# (ou: aumente "version" no package.json, faça commit e crie/envie a tag v1.1.0)
+# O Windows de quem já tem o Wecord instalado baixa a atualização sozinho.
+
+on:
+  workflow_dispatch:      # gera os instaladores sem publicar (baixe em "Artifacts")
+  push:
+    tags: ['v*']          # gera e publica no GitHub Releases
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Confere versão da tag
+        run: |
+          V=$(node -p "require('./package.json').version")
+          if [ "v$V" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::A tag ${GITHUB_REF_NAME} não bate com a versão $V do package.json"; exit 1
+          fi
+      - name: Cria o release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "Wecord $GITHUB_REF_NAME" --generate-notes
+
+  build:
+    needs: release
+    if: always() && (needs.release.result == 'success' || needs.release.result == 'skipped')
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            script: dist:win
+          - os: macos-latest
+            script: dist:mac
+          - os: ubuntu-latest
+            script: dist:linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            npm run ${{ matrix.script }} -- --publish always
+          else
+            npm run ${{ matrix.script }}
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wecord-${{ matrix.os }}
+          path: |
+            dist/*.exe
+            dist/*.dmg
+            dist/*.AppImage
+          if-no-files-found: ignore

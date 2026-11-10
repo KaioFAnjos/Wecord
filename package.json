@@ -1,0 +1,96 @@
+{
+  "name": "wecord",
+  "productName": "Wecord",
+  "version": "1.0.0",
+  "description": "Chamadas de vídeo P2P com compartilhamento de tela, janelas e webcam",
+  "main": "main.js",
+  "author": "Kaio Felipe",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "web": "node scripts/serve-web.js",
+    "icon": "node scripts/make-icon.js",
+    "vendor": "node -e \"require('fs').copyFileSync('node_modules/peerjs/dist/peerjs.min.js','src/vendor/peerjs.min.js')\"",
+    "release": "node scripts/release.js",
+    "check": "node --check main.js && node --check preload.js && node --check src/app.js && node --check src/rtc.js && node --check src/icons.js",
+    "dist:win": "node scripts/build-win.js",
+    "dist:linux": "npm run vendor && electron-builder --linux AppImage",
+    "dist:mac": "npm run vendor && electron-builder --mac"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0",
+    "peerjs": "1.5.5"
+  },
+  "build": {
+    "appId": "com.wecord.app",
+    "productName": "Wecord",
+    "copyright": "Wecord",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "src/**/*",
+      "build/icon.png",
+      "!src/**/*.map"
+    ],
+    "asar": true,
+    "publish": { "provider": "github", "owner": "KaioFAnjos", "repo": "Wecord", "releaseType": "release" },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "runAfterFinish": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Wecord",
+      "artifactName": "Wecord-Instalador-${version}.exe",
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "Wecord-Portatil-${version}.exe"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Network",
+      "icon": "build/icon.png"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.social-networking",
+      "icon": "build/icon.png",
+      "extendInfo": {
+        "NSCameraUsageDescription": "O Wecord usa a câmera nas chamadas.",
+        "NSMicrophoneUsageDescription": "O Wecord usa o microfone nas chamadas."
+      }
+    }
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  }
+}

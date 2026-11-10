@@ -1,0 +1,9 @@
+#!/bin/bash
+# "wine" para WSL: roda o .exe direto no Windows (interop), convertendo caminhos Linux -> Windows.
+exe="$1"; shift
+chmod +x "$exe" 2>/dev/null
+args=()
+for a in "$@"; do
+  if [[ "$a" == /* && ( -e "$a" || -d "$(dirname "$a")" ) ]]; then args+=("$(wslpath -w "$a")"); else args+=("$a"); fi
+done
+exec "$exe" "${args[@]}"

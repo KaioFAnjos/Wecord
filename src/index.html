@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; connect-src 'self' https: wss: ws:;">
+  <title>Wecord</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ============ TELA INICIAL ============ -->
+<section id="home" class="view">
+  <div class="home-wrap">
+    <header class="brand">
+      <img class="brand-logo" src="logo.svg" alt="">
+      <div>
+        <h1>Wecord</h1>
+        <p>Tela, janela e webcam com quem você gosta — direto de um PC pro outro.</p>
+      </div>
+    </header>
+
+    <div class="home-grid">
+      <div class="preview">
+        <div class="tile tile-cam preview-tile" id="preview-tile">
+          <video id="preview-video" playsinline autoplay muted></video>
+          <div class="tile-avatar"><div class="avatar-circle" id="preview-avatar">?</div></div>
+          <div class="preview-meter"><div id="preview-meter-bar"></div></div>
+        </div>
+        <div class="preview-controls">
+          <button class="round-btn" id="pre-mic" title="Microfone"><span data-icon="mic"></span></button>
+          <button class="round-btn" id="pre-cam" title="Câmera"><span data-icon="video"></span></button>
+          <button class="round-btn ghost" id="pre-settings" title="Configurações"><span data-icon="settings"></span></button>
+        </div>
+      </div>
+
+      <div class="card join-card">
+        <label class="field">
+          <span>Seu nome</span>
+          <input id="name-input" maxlength="32" placeholder="Como quer ser chamado(a)?" autocomplete="off">
+        </label>
+
+        <button class="btn primary big" id="btn-create"><span data-icon="plus"></span>Criar uma sala</button>
+
+        <div class="divider"><span>ou entre em uma sala</span></div>
+
+        <form class="join-row" id="join-form">
+          <input id="code-input" class="code-input" maxlength="7" placeholder="ABC-123" autocomplete="off" spellcheck="false">
+          <button class="btn" id="btn-join" type="submit">Entrar<span data-icon="arrowRight"></span></button>
+        </form>
+        <p class="hint">Quem criou a sala te passa o código de 6 caracteres.</p>
+        <p class="error-text" id="home-error" hidden></p>
+      </div>
+    </div>
+
+    <footer class="home-foot">
+      <span data-icon="lock"></span>
+      <span>Vídeo e áudio criptografados de ponta a ponta (WebRTC). Nada passa por servidores de mídia.</span>
+      <span class="ver" id="app-version"></span>
+    </footer>
+  </div>
+</section>
+
+<!-- ============ CHAMADA ============ -->
+<section id="call" class="view" hidden>
+  <header class="topbar">
+    <img class="topbar-logo" src="logo.svg" alt="">
+    <button class="chip" id="room-chip" title="Copiar código da sala">
+      <span class="chip-label">Sala</span><b id="room-code">---</b><span data-icon="copy"></span>
+    </button>
+    <span class="status" id="net-status"><i></i><span>Conectando…</span></span>
+    <div class="spacer"></div>
+    <span class="people-count" id="people-count" title="Pessoas na sala"><span data-icon="users"></span><b>1</b></span>
+  </header>
+
+  <div class="call-body">
+    <main id="stage-area" class="grid-mode">
+      <div id="grid"></div>
+      <div id="stage"></div>
+      <div id="strip"></div>
+    </main>
+
+    <aside id="chat-panel" hidden>
+      <header class="chat-head">
+        <h2>Chat</h2>
+        <button class="icon-btn" id="chat-close" title="Fechar"><span data-icon="x"></span></button>
+      </header>
+      <div id="chat-list" class="chat-list"></div>
+      <form id="chat-form" class="chat-form">
+        <input id="chat-input" maxlength="2000" placeholder="Escreva uma mensagem…" autocomplete="off">
+        <button class="icon-btn accent" title="Enviar"><span data-icon="send"></span></button>
+      </form>
+    </aside>
+  </div>
+
+  <footer class="controls">
+    <div class="controls-side" id="self-name"></div>
+    <div class="controls-main">
+      <button class="ctrl" id="btn-mic" title="Microfone (M)"><span class="ctrl-ico"></span><span class="ctrl-label">Microfone</span></button>
+      <button class="ctrl" id="btn-cam" title="Câmera (V)"><span class="ctrl-ico"></span><span class="ctrl-label">Câmera</span></button>
+      <button class="ctrl" id="btn-share" title="Compartilhar tela (S)"><span class="ctrl-ico"></span><span class="ctrl-label">Tela</span></button>
+      <button class="ctrl" id="btn-deaf" title="Silenciar tudo (D)"><span class="ctrl-ico"></span><span class="ctrl-label">Áudio</span></button>
+      <button class="ctrl" id="btn-chat" title="Chat"><span class="ctrl-ico" data-icon="chat"></span><span class="ctrl-label">Chat</span><i class="badge-dot" id="chat-badge" hidden></i></button>
+      <button class="ctrl" id="btn-settings" title="Configurações"><span class="ctrl-ico" data-icon="settings"></span><span class="ctrl-label">Ajustes</span></button>
+      <button class="ctrl danger" id="btn-leave" title="Sair da sala"><span class="ctrl-ico" data-icon="phoneOff"></span><span class="ctrl-label">Sair</span></button>
+    </div>
+    <div class="controls-side right"></div>
+  </footer>
+</section>
+
+<!-- ============ SELETOR DE TELA ============ -->
+<dialog id="picker" class="modal modal-wide">
+  <header class="modal-head">
+    <h2>Compartilhar</h2>
+    <button class="icon-btn" data-close title="Fechar"><span data-icon="x"></span></button>
+  </header>
+  <div class="tabs" id="picker-tabs">
+    <button class="tab active" data-tab="screen"><span data-icon="screen"></span>Telas</button>
+    <button class="tab" data-tab="window"><span data-icon="window"></span>Janelas</button>
+    <div class="spacer"></div>
+    <button class="icon-btn" id="picker-refresh" title="Atualizar lista"><span data-icon="refresh"></span></button>
+  </div>
+  <div class="source-grid" id="source-grid"></div>
+  <div class="browser-note" id="browser-note" hidden>
+    Ao clicar em <b>Compartilhar</b>, o navegador vai abrir a janela para você escolher a tela, janela ou aba.
+  </div>
+  <div class="picker-options">
+    <label class="field compact">
+      <span>Qualidade</span>
+      <select id="opt-quality"></select>
+    </label>
+    <label class="field compact">
+      <span>Otimizar para</span>
+      <select id="opt-hint">
+        <option value="motion">Movimento — jogos e vídeos</option>
+        <option value="detail">Nitidez — textos e código</option>
+      </select>
+    </label>
+    <label class="switch" id="opt-audio-wrap">
+      <input type="checkbox" id="opt-audio">
+      <span class="switch-ui"></span>
+      <span>Compartilhar o som do computador
+        <small>Se a outra pessoa ouvir eco da própria voz, desligue esta opção.</small>
+      </span>
+    </label>
+  </div>
+  <footer class="modal-foot">
+    <button class="btn ghost" data-close>Cancelar</button>
+    <button class="btn primary" id="picker-go" disabled>Compartilhar</button>
+  </footer>
+</dialog>
+
+<!-- ============ CONFIGURAÇÕES ============ -->
+<dialog id="settings" class="modal">
+  <header class="modal-head">
+    <h2>Configurações</h2>
+    <button class="icon-btn" data-close title="Fechar"><span data-icon="x"></span></button>
+  </header>
+  <div class="modal-body">
+    <h3>Voz e vídeo</h3>
+    <label class="field"><span>Microfone</span><select id="set-mic"></select></label>
+    <div class="meter"><div id="set-meter-bar"></div></div>
+    <label class="field"><span>Câmera</span><select id="set-cam"></select></label>
+    <label class="field"><span>Saída de áudio</span>
+      <div class="row"><select id="set-out"></select><button class="btn small" id="set-test-sound" type="button">Testar</button></div>
+    </label>
+    <label class="switch">
+      <input type="checkbox" id="set-noise">
+      <span class="switch-ui"></span>
+      <span>Supressão de ruído <small>Reduz barulho de fundo do microfone.</small></span>
+    </label>
+    <label class="switch">
+      <input type="checkbox" id="set-sounds">
+      <span class="switch-ui"></span>
+      <span>Sons de entrada, saída e mensagens</span>
+    </label>
+
+    <details class="advanced">
+      <summary>Conexão avançada</summary>
+      <p class="hint">Só mexa aqui se a conexão não funcionar (ex: redes de empresa/faculdade). Um servidor TURN retransmite o vídeo quando a conexão direta é bloqueada.</p>
+      <label class="field"><span>Servidor TURN (url)</span><input id="set-turn-url" placeholder="turn:exemplo.com:3478"></label>
+      <div class="row">
+        <label class="field"><span>Usuário</span><input id="set-turn-user"></label>
+        <label class="field"><span>Senha</span><input id="set-turn-pass" type="password"></label>
+      </div>
+      <label class="field"><span>Servidor de sinalização PeerJS (vazio = público gratuito)</span><input id="set-server-host" placeholder="0.peerjs.com"></label>
+      <div class="row">
+        <label class="field"><span>Porta</span><input id="set-server-port" placeholder="443"></label>
+        <label class="field"><span>Caminho</span><input id="set-server-path" placeholder="/"></label>
+      </div>
+      <p class="hint">Todas as pessoas da sala precisam usar o mesmo servidor de sinalização.</p>
+    </details>
+  </div>
+  <footer class="modal-foot">
+    <span class="ver" id="settings-version"></span>
+    <div class="spacer"></div>
+    <button class="btn primary" data-close>Pronto</button>
+  </footer>
+</dialog>
+
+<div id="update-bar" class="update-bar" hidden role="status">
+  <span data-icon="download"></span>
+  <span id="update-text"></span>
+  <button class="btn small primary" id="btn-update" type="button" hidden>Reiniciar e atualizar</button>
+  <button class="icon-btn small" id="btn-update-later" type="button" title="Depois (atualiza quando fechar o Wecord)" hidden><span data-icon="x"></span></button>
+</div>
+<div id="toasts" aria-live="polite"></div>
+<div id="audio-sink" hidden></div>
+
+<script src="vendor/peerjs.min.js"></script>
+<script src="icons.js"></script>
+<script src="rtc.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
