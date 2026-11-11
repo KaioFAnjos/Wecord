@@ -599,6 +599,7 @@
         <button class="tool full" title="Tela cheia">${icon('maximize')}</button>
       </div>`;
     const full = () => {
+      if (isMobile) { setImmersive(!immersive); return; }
       if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
       if (el.requestFullscreen) { el.requestFullscreen().catch(() => {}); return; }
       if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen(); return; } // iPad
@@ -606,7 +607,7 @@
       if (v && v.webkitEnterFullscreen) { try { v.webkitEnterFullscreen(); } catch { /* ignore */ } }
     };
     el.querySelector('.full').addEventListener('click', (e) => { e.stopPropagation(); full(); });
-    el.addEventListener('dblclick', full);
+    el.addEventListener('dblclick', () => { if (!isMobile) full(); }); // no celular o toque duplo é zoom
     el.querySelector('.pin').addEventListener('click', (e) => {
       e.stopPropagation();
       pinned = pinned === key ? null : key;
@@ -741,13 +742,19 @@
       if (other) featuredKey = other.dataset.key;
     }
     const featured = featuredKey ? tiles.get(featuredKey) : null;
+    const pip = featured && isMobile ? pipFor(featuredKey, order) : null;
+    order.forEach((el) => { if (el !== pip) { el.classList.remove('pip'); delete el.dataset.corner; } });
 
     if (featured && order.length > 1) {
-      area.className = 'focus-mode';
+      const rest = order.filter((el) => el !== featured && el !== pip);
+      area.className = 'focus-mode' + (rest.length ? '' : ' no-strip');
       $('#grid').replaceChildren();
-      place($('#stage'), [featured]);
-      place($('#strip'), order.filter((el) => el !== featured));
+      if (pip) { pip.classList.add('pip'); pip.dataset.corner = pipCorner; }
+      place($('#stage'), pip ? [featured, pip] : [featured]);
+      place($('#strip'), rest);
+      setZoomTarget(featured.classList.contains('tile-screen') ? featured.querySelector('video') : null);
     } else {
+      setZoomTarget(null);
       area.className = 'grid-mode';
       $('#stage').replaceChildren();
       $('#strip').replaceChildren();
@@ -758,6 +765,135 @@
     // garante que vídeos movidos continuem tocando
     order.forEach((el) => { const v = el.querySelector('video'); if (v.srcObject && v.paused) playMedia(v); });
   }
+
+  /* ---------- celular: miniatura no canto, tela cheia e zoom ---------- */
+  let pipCorner = 'br';
+  let immersive = false;
+
+  // quem vai para a miniatura: a câmera de quem está compartilhando (ou a tela dela, se a câmera
+  // estiver em destaque); numa chamada a dois sem tela, você mesmo
+  function pipFor(featuredKey, order) {
+    const [id, kind] = featuredKey.split(':');
+    let key = null;
+    if (kind === 'screen' && id !== 'me') key = id + ':cam';
+    else if (kind === 'cam' && tiles.has(id + ':screen') && id !== 'me') key = id + ':screen';
+    else if (kind === 'cam' && id !== 'me' && order.length === 2) key = 'me:cam';
+    else if (kind === 'cam' && id === 'me' && order.length === 2) { const o = order.find((el) => el.dataset.key !== 'me:cam'); key = o && o.dataset.key; }
+    const el = key ? tiles.get(key) : null;
+    return el && order.includes(el) ? el : null;
+  }
+
+  function setImmersive(on) {
+    immersive = on;
+    $('#call').classList.toggle('immersive', on);
+    if (on && document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(() => {}); // Android
+    else if (!on && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    if (!on) resetZoom();
+    render();
+  }
+  document.addEventListener('fullscreenchange', () => { if (isMobile && !document.fullscreenElement && immersive) setImmersive(false); });
+
+  // arrastar a miniatura para um canto; um toque troca miniatura e destaque
+  (function pipDrag() {
+    const stage = $('#stage');
+    let drag = null;
+    stage.addEventListener('pointerdown', (e) => {
+      const el = e.target.closest('.tile.pip');
+      if (!el || e.target.closest('.tool')) return;
+      const r = el.getBoundingClientRect();
+      drag = { el, id: e.pointerId, x0: e.clientX, y0: e.clientY, left: r.left, top: r.top, moved: false };
+      el.setPointerCapture(e.pointerId);
+      e.stopPropagation();
+    });
+    stage.addEventListener('pointermove', (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
+      if (!drag.moved && Math.hypot(dx, dy) < 8) return;
+      drag.moved = true;
+      drag.el.classList.add('dragging');
+      drag.el.style.transform = `translate(${dx}px, ${dy}px)`;
+    });
+    const end = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const d = drag;
+      drag = null;
+      d.el.classList.remove('dragging');
+      d.el.style.transform = '';
+      if (!d.moved) { pinned = d.el.dataset.key; resetZoom(); render(); return; }
+      const sr = stage.getBoundingClientRect();
+      const r = d.el.getBoundingClientRect();
+      const cx = d.left + (e.clientX - d.x0) + r.width / 2, cy = d.top + (e.clientY - d.y0) + r.height / 2;
+      pipCorner = (cy < sr.top + sr.height / 2 ? 't' : 'b') + (cx < sr.left + sr.width / 2 ? 'l' : 'r');
+      d.el.dataset.corner = pipCorner;
+    };
+    stage.addEventListener('pointerup', end);
+    stage.addEventListener('pointercancel', end);
+  })();
+
+  // zoom de pinça / arrastar / toque duplo na tela compartilhada em destaque
+  const zoom = { el: null, s: 1, x: 0, y: 0 };
+  function applyZoom() {
+    if (!zoom.el) return;
+    const w = zoom.el.clientWidth, h = zoom.el.clientHeight;
+    const mx = ((zoom.s - 1) * w) / 2, my = ((zoom.s - 1) * h) / 2;
+    zoom.x = Math.max(-mx, Math.min(mx, zoom.x));
+    zoom.y = Math.max(-my, Math.min(my, zoom.y));
+    zoom.el.style.transform = zoom.s > 1.01 ? `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.s})` : '';
+    zoom.el.closest('.tile').classList.toggle('zoomed', zoom.s > 1.01);
+  }
+  function resetZoom() { zoom.s = 1; zoom.x = 0; zoom.y = 0; applyZoom(); }
+  function setZoomTarget(v) {
+    if (!isMobile || zoom.el === v) return;
+    if (zoom.el) { zoom.el.style.transform = ''; const t = zoom.el.closest('.tile'); if (t) t.classList.remove('zoomed'); }
+    zoom.el = v;
+    zoom.s = 1; zoom.x = 0; zoom.y = 0;
+  }
+  (function pinchZoom() {
+    if (!isMobile) return;
+    const stage = $('#stage');
+    let g = null, lastTap = 0;
+    const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const onTarget = (e) => zoom.el && e.target.closest('.tile') === zoom.el.closest('.tile') && !e.target.closest('.tool, .pip');
+    stage.addEventListener('touchstart', (e) => {
+      if (!onTarget(e)) return;
+      if (e.touches.length === 2) {
+        g = { mode: 'pinch', d0: dist(e.touches), s0: zoom.s };
+      } else if (e.touches.length === 1) {
+        const now = Date.now();
+        if (now - lastTap < 300) {
+          // toque duplo: aproxima no ponto tocado ou volta ao normal
+          if (zoom.s > 1.01) resetZoom();
+          else {
+            const r = zoom.el.getBoundingClientRect();
+            zoom.s = 2.5;
+            zoom.x = (r.left + r.width / 2 - e.touches[0].clientX) * 1.5;
+            zoom.y = (r.top + r.height / 2 - e.touches[0].clientY) * 1.5;
+            applyZoom();
+          }
+          lastTap = 0;
+          g = null;
+          e.preventDefault();
+          return;
+        }
+        lastTap = now;
+        g = zoom.s > 1.01 ? { mode: 'pan', x0: e.touches[0].clientX, y0: e.touches[0].clientY, zx: zoom.x, zy: zoom.y } : null;
+      }
+    }, { passive: false });
+    stage.addEventListener('touchmove', (e) => {
+      if (!g) return;
+      if (g.mode === 'pinch' && e.touches.length === 2) {
+        zoom.s = Math.max(1, Math.min(5, (g.s0 * dist(e.touches)) / g.d0));
+        applyZoom();
+        e.preventDefault();
+      } else if (g.mode === 'pan' && e.touches.length === 1) {
+        zoom.x = g.zx + (e.touches[0].clientX - g.x0);
+        zoom.y = g.zy + (e.touches[0].clientY - g.y0);
+        applyZoom();
+        e.preventDefault();
+      }
+    }, { passive: false });
+    stage.addEventListener('touchend', (e) => { if (!e.touches.length) g = null; else if (g && g.mode === 'pinch' && e.touches.length === 1) g = null; });
+  })();
 
   function sizeGrid() {
     const grid = $('#grid');
@@ -1033,6 +1169,7 @@
     if (deafened) setDeaf(false);
     closeChat();
     keepAwake(false);
+    if (immersive) setImmersive(false);
     try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ }
     showView('home');
     Sound.leave();

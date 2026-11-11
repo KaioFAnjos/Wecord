@@ -436,3 +436,47 @@ select { cursor: pointer; }
   .mobile #call.idle .controls { opacity: 0; pointer-events: none; }
   .mobile #stage-area.grid-mode #grid { padding-bottom: 72px; }
 }
+
+/* ---------- celular: miniatura no canto (picture-in-picture) ---------- */
+.mobile #stage { position: relative; }
+.mobile #stage-area.no-strip #strip { display: none; }
+.mobile #stage > .tile.pip {
+  position: absolute; z-index: 4; flex: none;
+  width: 30%; max-width: 150px; aspect-ratio: 3 / 4;
+  border-radius: 12px; border: 2px solid rgba(255, 255, 255, .18);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .55);
+  touch-action: none; cursor: grab;
+  transition: top .2s, left .2s, right .2s, bottom .2s, box-shadow .15s;
+}
+.mobile #stage > .tile.pip.tile-screen { aspect-ratio: 16 / 9; width: 42%; max-width: 220px; }
+.mobile #stage > .tile.pip.dragging { transition: none; box-shadow: 0 14px 34px rgba(0, 0, 0, .7); z-index: 6; }
+.mobile #stage > .tile.pip[data-corner="tr"] { top: 10px; right: 10px; }
+.mobile #stage > .tile.pip[data-corner="tl"] { top: 10px; left: 10px; }
+.mobile #stage > .tile.pip[data-corner="br"] { bottom: 10px; right: 10px; }
+.mobile #stage > .tile.pip[data-corner="bl"] { bottom: 10px; left: 10px; }
+.mobile #stage > .tile.pip video { object-fit: cover; }
+.mobile #stage > .tile.pip.tile-screen video { object-fit: contain; }
+.mobile #stage > .tile.pip .tile-tools, .mobile #stage > .tile.pip .tile-badges, .mobile #stage > .tile.pip .tile-loading span { display: none; }
+.mobile #stage > .tile.pip .tile-name { left: 4px; bottom: 4px; height: 20px; padding: 0 6px; font-size: 10.5px; border-radius: 6px; }
+.mobile #stage > .tile.pip .avatar-circle { width: 44%; font-size: 18px; }
+.mobile #stage > .tile.pip.speaking { border-color: var(--speak); }
+/* a miniatura não cobre os botões de baixo quando eles aparecem por cima (celular deitado) */
+@media (orientation: landscape) and (max-height: 560px) {
+  .mobile #stage > .tile.pip { width: 20%; max-width: 170px; aspect-ratio: 4 / 3; }
+  .mobile #stage > .tile.pip[data-corner^="b"] { bottom: 84px; }
+  .mobile #call.idle #stage > .tile.pip[data-corner^="b"] { bottom: 10px; }
+}
+
+/* zoom na tela compartilhada */
+.mobile #stage > .tile-screen:not(.pip) { touch-action: none; }
+.mobile #stage > .tile-screen video { transform-origin: 50% 50%; will-change: transform; }
+.mobile .tile.zoomed .tile-badges { display: none; }
+
+/* tela cheia do Wecord no celular: só o palco (tela + miniatura) */
+.mobile #call.immersive { padding: 0; background: #000; }
+.mobile #call.immersive .topbar, .mobile #call.immersive .controls, .mobile #call.immersive #strip { display: none !important; }
+.mobile #call.immersive #stage-area { padding: 0; }
+.mobile #call.immersive #stage > .tile:not(.pip) { border: 0; border-radius: 0; }
+.mobile #call.immersive #stage > .tile.pip[data-corner^="t"] { top: calc(10px + env(safe-area-inset-top)); }
+.mobile #call.immersive #stage > .tile.pip[data-corner^="b"] { bottom: calc(10px + env(safe-area-inset-bottom)); }
+.mobile #call.immersive .tile-tools { top: calc(8px + env(safe-area-inset-top)); }
