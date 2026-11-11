@@ -5,10 +5,7 @@
 const fs = require('fs');
 const path = require('path');
 
-fs.copyFileSync(
-  path.join(__dirname, '..', 'node_modules', 'peerjs', 'dist', 'peerjs.min.js'),
-  path.join(__dirname, '..', 'src', 'vendor', 'peerjs.min.js'),
-);
+require('./vendor');
 
 if (process.platform !== 'win32') {
   const mv = require('app-builder-lib/out/util/macosVersion');

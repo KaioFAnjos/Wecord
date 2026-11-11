@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; connect-src 'self' https: wss: ws:;">
+  <meta name="theme-color" content="#0e1014">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Wecord · Celular</title>
+  <link rel="icon" href="logo.svg">
+  <link rel="stylesheet" href="phone.css">
+</head>
+<body>
+  <main id="app">
+    <header class="top">
+      <img src="logo.svg" alt="" width="28" height="28">
+      <strong>Wecord</strong>
+      <span class="pill" id="status"><i></i><span id="status-text">Conectando…</span></span>
+    </header>
+
+    <!-- etapa 1: permitir câmera/microfone (o iPhone exige um toque) -->
+    <section id="step-start" class="card center">
+      <h1>Usar este celular no PC</h1>
+      <p>Seu celular vai funcionar como <b>câmera</b> e <b>microfone</b> do Wecord no computador.</p>
+      <button class="btn primary big" id="btn-start">Começar</button>
+      <p class="hint">O iPhone vai pedir permissão para câmera e microfone: toque em <b>Permitir</b>.</p>
+    </section>
+
+    <!-- etapa 2: transmitindo -->
+    <section id="step-live" hidden>
+      <div class="preview">
+        <video id="preview" playsinline autoplay muted></video>
+        <div class="preview-off" id="preview-off" hidden>
+          <span id="preview-off-text">Câmera desligada</span>
+        </div>
+        <div class="meter"><div id="meter-bar"></div></div>
+      </div>
+
+      <div class="controls">
+        <button class="ctl" id="btn-cam"><span class="ico" id="ico-cam"></span><span>Câmera</span></button>
+        <button class="ctl" id="btn-flip"><span class="ico" id="ico-flip"></span><span>Virar</span></button>
+        <button class="ctl" id="btn-black"><span class="ico" id="ico-black"></span><span>Tela preta</span></button>
+      </div>
+
+      <p class="hint" id="live-hint">Deixe o Safari aberto e a tela ligada. Para silenciar o microfone, use o botão de microfone no PC.</p>
+      <p class="hint warn" id="wake-hint" hidden>Seu iPhone pode bloquear a tela sozinho. Desative em <b>Ajustes → Tela e Brilho → Bloqueio Automático → Nunca</b> enquanto usa.</p>
+    </section>
+
+    <section id="step-error" class="card center" hidden>
+      <h1 id="error-title">Ops</h1>
+      <p id="error-text"></p>
+      <button class="btn" id="btn-retry">Tentar de novo</button>
+    </section>
+  </main>
+
+  <!-- modo "só microfone": tela preta para economizar bateria -->
+  <div id="black" hidden>
+    <div class="black-info">
+      <div class="dot"></div>
+      <p>Microfone ligado</p>
+      <small>Toque duas vezes para voltar</small>
+    </div>
+  </div>
+
+  <script src="vendor/peerjs.min.js"></script>
+  <script src="phone.js"></script>
+</body>
+</html>

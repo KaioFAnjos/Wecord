@@ -329,3 +329,23 @@ select { cursor: pointer; }
 .update-bar > [data-icon] { color: var(--accent-2); display: inline-flex; }
 .update-bar.ready { border-color: #1f5a37; }
 .update-bar .icon-btn { width: 30px; height: 30px; }
+
+/* ---------- celular como câmera ---------- */
+.link-btn { display: inline-flex; align-items: center; gap: 8px; align-self: center; margin: -4px 0 0; padding: 6px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--accent-2); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.link-btn:hover { background: var(--surface-2); }
+.link-btn .ico { width: 16px; height: 16px; }
+.link-btn.on { color: #86efac; }
+#set-phone { width: 100%; justify-content: center; }
+#set-phone.on { border-color: #1f5a37; color: #c9f7d8; }
+.phone-pair { display: flex; gap: 20px; align-items: center; }
+.qr { flex: none; width: 196px; height: 196px; border-radius: 14px; overflow: hidden; background: #fff; display: grid; place-items: center; }
+.qr svg { width: 100%; height: 100%; display: block; }
+.steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; color: var(--text-2); }
+.steps b { color: var(--text); }
+.phone-status { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); font-weight: 600; }
+.phone-status i { width: 9px; height: 9px; border-radius: 50%; background: #f59e0b; flex: none; animation: pulse 1.4s ease-in-out infinite; }
+.phone-status.ok { border-color: #1f5a37; background: #13301f; color: #c9f7d8; }
+.phone-status.ok i { background: #22c55e; animation: none; }
+@keyframes pulse { 50% { opacity: .35; } }
+#phone-url { flex: 1; min-width: 0; height: 34px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); font: inherit; font-size: 12px; }
+@media (max-width: 560px) { .phone-pair { flex-direction: column; } }

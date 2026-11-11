@@ -6,6 +6,7 @@
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const native = window.wecordNative || null;
   const { Room, QUALITY, normalizeCode, formatCode } = window.Wecord;
+  const { PhoneLink, newCode, qrSvg } = window.WecordPhone;
   const canShareSystemAudio = !native || native.platform === 'win32';
 
   /* ================================================================ */
@@ -17,6 +18,7 @@
     quality: '1080p30', hint: 'motion', shareAudio: true,
     turnUrl: '', turnUser: '', turnPass: '',
     serverHost: '', serverPort: '443', serverPath: '/',
+    phoneCode: '',
   };
   const settings = (() => {
     try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('wecord.settings') || '{}') }; } catch { return { ...DEFAULTS }; }
@@ -136,18 +138,27 @@
   let room = null;
 
   const micConstraints = () => ({
-    deviceId: settings.micId ? { exact: settings.micId } : undefined,
+    deviceId: settings.micId && settings.micId !== 'phone' ? { exact: settings.micId } : undefined,
     echoCancellation: true,
     noiseSuppression: !!settings.noise,
     autoGainControl: true,
     channelCount: 1,
   });
   const camConstraints = () => ({
-    deviceId: settings.camId ? { exact: settings.camId } : undefined,
+    deviceId: settings.camId && settings.camId !== 'phone' ? { exact: settings.camId } : undefined,
     width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 },
   });
 
   async function getTrack(kind) {
+    if ((kind === 'audio' ? settings.micId : settings.camId) === 'phone') {
+      const src = phone && (kind === 'audio' ? phone.audioTrack : phone.videoTrack);
+      if (src) {
+        const t = src.clone();
+        phoneSource.set(t, src);
+        return t;
+      }
+      // celular não conectado: cai para o dispositivo padrão do PC
+    }
     const c = kind === 'audio' ? micConstraints() : camConstraints();
     try {
       const s = await navigator.mediaDevices.getUserMedia({ [kind]: c });
@@ -177,7 +188,7 @@
       return true;
     } catch (e) {
       console.warn('mic', e);
-      toast('Microfone: ' + friendlyError(e), 'error', 4500);
+      if (settings.micId !== 'phone') toast('Microfone: ' + friendlyError(e), 'error', 4500); // celular ainda vai conectar
       local.micOn = false;
       return false;
     }
@@ -197,7 +208,7 @@
       return true;
     } catch (e) {
       console.warn('cam', e);
-      toast('Câmera: ' + friendlyError(e), 'error', 4500);
+      if (settings.camId !== 'phone') toast('Câmera: ' + friendlyError(e), 'error', 4500);
       local.camOn = false;
       return false;
     }
@@ -215,7 +226,13 @@
 
   async function swapDevice(kind) {
     const old = kind === 'audio' ? local.mic : local.cam;
-    if (!old) return;
+    if (!old) {
+      // ainda não havia dispositivo (ex: PC sem câmera): liga com o novo
+      if (kind === 'audio') { local.micOn = true; await ensureMic(); room && room.setState({ mic: local.micOn && !deafened }); }
+      else { await startCam(); room && room.setState({ cam: !!local.cam }); }
+      render();
+      return;
+    }
     try {
       const t = await getTrack(kind);
       if (kind === 'audio') { t.contentHint = 'speech'; t.enabled = local.micOn && !deafened; local.mic = t; } else { t.contentHint = 'motion'; local.cam = t; }
@@ -244,11 +261,146 @@
     render();
   }
 
-  async function toggleCam() {
-    if (local.cam) stopCam(); else await startCam();
+  async function toggleCam() { await setCam(!local.cam); }
+
+  async function setCam(on) {
+    if (on && !local.cam) await startCam();
+    else if (!on && local.cam) stopCam();
+    if (phone && phone.connected) phoneCamWanted = !!local.cam && isPhoneTrack(local.cam);
     if (!room) { settings.startCam = local.camOn; saveSettings(); }
     room && room.setState({ cam: !!local.cam });
     render();
+  }
+
+  /* ---------- celular como câmera/microfone ---------- */
+  let phone = null;
+  const phoneSource = new WeakMap(); // faixa clonada -> faixa remota do celular
+  const isPhoneTrack = (t) => !!t && phoneSource.has(t);
+  let phoneCamWanted = settings.startCam; // ligar a câmera do celular quando ele (re)conectar
+  let phoneFirst = true;      // primeira conexão nesta sessão
+  let phoneHello = '';
+
+  function ensurePhoneLink() {
+    if (phone) return phone;
+    if (!settings.phoneCode) { settings.phoneCode = newCode(); saveSettings(); }
+    phone = new PhoneLink({ code: settings.phoneCode, iceServers: iceServers(), server: signalServer(), isNative: !!native });
+    phone.addEventListener('status', renderPhone);
+    phone.addEventListener('tracks', onPhoneTracks);
+    phone.addEventListener('lost', onPhoneLost);
+    phone.addEventListener('cam', async (e) => {
+      const on = e.detail;
+      if (on && phone.videoTrack && settings.camId !== 'phone') {
+        settings.camId = 'phone';
+        saveSettings();
+        if (local.cam) { await swapDevice('video'); phoneCamWanted = true; render(); return; }
+      }
+      await setCam(on);
+    });
+    phone.start();
+    phoneHello = '';
+    return phone;
+  }
+
+  let phoneBusy = Promise.resolve();
+  function onPhoneTracks() {
+    // serializa: 'tracks' pode chegar duas vezes seguidas (stream + capacidades)
+    phoneBusy = phoneBusy.then(applyPhoneTracks).catch((e) => console.warn('phone tracks', e));
+  }
+  async function applyPhoneTracks() {
+    if (!phone || !phone.connected) return;
+    let changed = false;
+    const a = phone.audioTrack;
+    if (a && !(local.mic && phoneSource.get(local.mic) === a)) {
+      settings.micId = 'phone';
+      if (phoneFirst) local.micOn = true;
+      if (local.mic) await swapDevice('audio');
+      else await ensureMic();
+      room && room.setState({ mic: local.micOn && !deafened });
+      changed = true;
+    }
+    const v = phone.videoTrack;
+    if (v && phoneCamWanted && !(local.cam && phoneSource.get(local.cam) === v)) {
+      settings.camId = 'phone';
+      if (local.cam) await swapDevice('video');
+      else await startCam();
+      room && room.setState({ cam: !!local.cam });
+      changed = true;
+    }
+    if (changed) {
+      saveSettings();
+      if (phoneFirst) toast('Celular conectado! Ele agora é sua ' + (v ? 'câmera e ' : '') + 'microfone.', 'ok', 4500);
+      else toast('Celular reconectado', 'ok');
+      phoneFirst = false;
+      refreshDevices();
+    }
+    render();
+  }
+
+  function onPhoneLost() {
+    let changed = false;
+    if (isPhoneTrack(local.mic)) {
+      const t = local.mic;
+      local.mic = null;
+      local.main.removeTrack(t);
+      room && room.removeTrack(t);
+      t.stop();
+      changed = true;
+    }
+    if (isPhoneTrack(local.cam)) {
+      phoneCamWanted = true;
+      stopCam();
+      room && room.setState({ cam: false });
+      changed = true;
+    }
+    if (changed) toast('O celular desconectou. Volte ao Safari nele que reconecta sozinho.', 'error', 6000);
+    render();
+  }
+
+  function stopPhone() {
+    if (!phone) return;
+    const p = phone;
+    phone = null;
+    p.stop();
+    onPhoneLost();
+    if (settings.micId === 'phone') settings.micId = '';
+    if (settings.camId === 'phone') settings.camId = '';
+    saveSettings();
+    phoneFirst = true;
+    phoneCamWanted = true;
+    // volta para o microfone/câmera do PC, se houver
+    if (local.micOn) ensureMic();
+    refreshDevices();
+    render();
+  }
+
+  function openPhone() {
+    ensurePhoneLink();
+    const box = $('#phone-qr');
+    box.replaceChildren(qrSvg(phone.url, 196));
+    $('#phone-url').value = phone.url;
+    renderPhone();
+    if (!$('#phone-dialog').open) $('#phone-dialog').showModal();
+  }
+
+  function renderPhone() {
+    const on = !!(phone && phone.connected);
+    const st = $('#phone-status');
+    st.classList.toggle('ok', on);
+    $('#phone-status-text').textContent = on
+      ? 'Celular conectado' + (phone.caps.video ? ' — câmera e microfone' : ' — microfone')
+      : 'Aguardando o celular…';
+    $('#phone-stop').hidden = !phone;
+    $('#pre-phone').classList.toggle('on', on);
+    $('#pre-phone-text').textContent = on ? 'Celular conectado' : phone ? 'Conectar o celular' : 'Sem câmera ou microfone? Use o celular';
+    $('#set-phone').classList.toggle('on', on);
+    $('#set-phone-text').textContent = on ? 'Celular conectado — ver detalhes' : 'Usar o celular como câmera e microfone';
+  }
+
+  function syncPhone() {
+    if (!phone) return;
+    phone.setNeed(isPhoneTrack(local.cam));
+    const hello = myName() + '|' + !!room;
+    if (hello !== phoneHello) { phoneHello = hello; phone.setHello({ name: myName(), inCall: !!room }); }
   }
 
   function setDeaf(v) {
@@ -477,6 +629,7 @@
   }
 
   function renderNow() {
+    syncPhone();
     renderControls();
     if (!room) return;
     const order = [];
@@ -1015,7 +1168,13 @@
         o.textContent = d.label || `${fallback.split(' ')[0]} ${i + 1}`;
         sel.appendChild(o);
       });
-      sel.value = list.some((d) => d.deviceId === current) ? current : '';
+      if (sel.id === 'set-mic' || sel.id === 'set-cam') {
+        const o = document.createElement('option');
+        o.value = 'phone';
+        o.textContent = phone && phone.connected ? 'Celular (conectado)' : 'Celular (conectar…)';
+        sel.appendChild(o);
+      }
+      sel.value = current === 'phone' ? 'phone' : list.some((d) => d.deviceId === current) ? current : '';
     };
     fill($('#set-mic'), 'audioinput', settings.micId, 'Padrão do sistema');
     fill($('#set-cam'), 'videoinput', settings.camId, 'Padrão do sistema');
@@ -1037,8 +1196,27 @@
     $('#settings').showModal();
   }
 
-  $('#set-mic').addEventListener('change', (e) => { settings.micId = e.target.value; saveSettings(); swapDevice('audio'); });
-  $('#set-cam').addEventListener('change', (e) => { settings.camId = e.target.value; saveSettings(); swapDevice('video'); });
+  function pickDevice(kind, value) {
+    if (kind === 'audio') settings.micId = value; else settings.camId = value;
+    saveSettings();
+    if (value === 'phone' && !(phone && phone.connected)) { openPhone(); return; }
+    if (kind === 'video' && value === 'phone') phoneCamWanted = true;
+    swapDevice(kind);
+  }
+  $('#set-mic').addEventListener('change', (e) => pickDevice('audio', e.target.value));
+  $('#set-cam').addEventListener('change', (e) => pickDevice('video', e.target.value));
+  $('#set-phone').addEventListener('click', openPhone);
+  $('#pre-phone').addEventListener('click', openPhone);
+  $('#phone-copy').addEventListener('click', () => copyText($('#phone-url').value).then((ok) => toast(ok ? 'Link copiado!' : 'Não consegui copiar', ok ? 'ok' : 'error')));
+  $('#phone-reset').addEventListener('click', () => {
+    stopPhone();
+    settings.phoneCode = newCode();
+    saveSettings();
+    openPhone();
+    toast('Código novo gerado. Escaneie de novo no celular.');
+  });
+  $('#phone-stop').addEventListener('click', () => { stopPhone(); $('#phone-dialog').close(); toast('O celular não será mais usado.'); });
+  $('#phone-dialog').addEventListener('close', refreshDevices);
   $('#set-out').addEventListener('change', (e) => {
     settings.outId = e.target.value;
     saveSettings();
@@ -1163,6 +1341,8 @@
       native.updateState().then(showUpdate).catch(() => {});
     }
     try { if (window.Notification && Notification.permission === 'default') Notification.requestPermission().catch(() => {}); } catch { /* ignore */ }
+    if (settings.phoneCode && (settings.micId === 'phone' || settings.camId === 'phone')) ensurePhoneLink();
+    renderPhone();
     render();
     await ensureMic();
     if (local.camOn) await startCam();

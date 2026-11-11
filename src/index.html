@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; connect-src 'self' https: wss: ws:;">
   <title>Wecord</title>
+  <link rel="icon" href="logo.svg">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -32,6 +33,7 @@
           <button class="round-btn" id="pre-cam" title="Câmera"><span data-icon="video"></span></button>
           <button class="round-btn ghost" id="pre-settings" title="Configurações"><span data-icon="settings"></span></button>
         </div>
+        <button class="link-btn" id="pre-phone" type="button"><span data-icon="smartphone"></span><span id="pre-phone-text">Sem câmera ou microfone? Use o celular</span></button>
       </div>
 
       <div class="card join-card">
@@ -161,6 +163,7 @@
     <label class="field"><span>Microfone</span><select id="set-mic"></select></label>
     <div class="meter"><div id="set-meter-bar"></div></div>
     <label class="field"><span>Câmera</span><select id="set-cam"></select></label>
+    <button class="btn" id="set-phone" type="button"><span data-icon="smartphone"></span><span id="set-phone-text">Usar o celular como câmera e microfone</span></button>
     <label class="field"><span>Saída de áudio</span>
       <div class="row"><select id="set-out"></select><button class="btn small" id="set-test-sound" type="button">Testar</button></div>
     </label>
@@ -198,6 +201,40 @@
   </footer>
 </dialog>
 
+<!-- ============ CELULAR COMO CÂMERA ============ -->
+<dialog id="phone-dialog" class="modal">
+  <header class="modal-head">
+    <h2>Celular como câmera e microfone</h2>
+    <button class="icon-btn" data-close title="Fechar"><span data-icon="x"></span></button>
+  </header>
+  <div class="modal-body">
+    <div class="phone-pair">
+      <div class="qr" id="phone-qr"></div>
+      <ol class="steps">
+        <li>Abra a <b>câmera do iPhone</b> e aponte para este código.</li>
+        <li>Toque no link que aparecer: abre no <b>Safari</b>.</li>
+        <li>Toque em <b>Começar</b> e permita câmera e microfone.</li>
+      </ol>
+    </div>
+    <div class="phone-status" id="phone-status"><i></i><span id="phone-status-text">Aguardando o celular…</span></div>
+    <p class="hint">Deixe o Safari aberto e a tela do celular ligada (de preferência carregando). Só quer o microfone? Toque em <b>Tela preta</b> no celular: a câmera desliga e a bateria dura mais.</p>
+    <details class="advanced">
+      <summary>Link e código</summary>
+      <p class="hint">Também dá para abrir este link no celular (mande por WhatsApp para você mesmo). Você pode salvá-lo nos favoritos: ele continua funcionando.</p>
+      <div class="row">
+        <input id="phone-url" readonly>
+        <button class="btn small" id="phone-copy" type="button"><span data-icon="copy"></span>Copiar</button>
+      </div>
+      <button class="btn small ghost" id="phone-reset" type="button"><span data-icon="refresh"></span>Gerar novo código (o link antigo para de funcionar)</button>
+    </details>
+  </div>
+  <footer class="modal-foot">
+    <button class="btn ghost" id="phone-stop" type="button">Não usar o celular</button>
+    <div class="spacer"></div>
+    <button class="btn primary" data-close>Pronto</button>
+  </footer>
+</dialog>
+
 <div id="update-bar" class="update-bar" hidden role="status">
   <span data-icon="download"></span>
   <span id="update-text"></span>
@@ -208,6 +245,8 @@
 <div id="audio-sink" hidden></div>
 
 <script src="vendor/peerjs.min.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="phone-link.js"></script>
 <script src="icons.js"></script>
 <script src="rtc.js"></script>
 <script src="app.js"></script>

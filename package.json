@@ -11,9 +11,9 @@
     "start": "electron .",
     "web": "node scripts/serve-web.js",
     "icon": "node scripts/make-icon.js",
-    "vendor": "node -e \"require('fs').copyFileSync('node_modules/peerjs/dist/peerjs.min.js','src/vendor/peerjs.min.js')\"",
+    "vendor": "node scripts/vendor.js",
     "release": "node scripts/release.js",
-    "check": "node --check main.js && node --check preload.js && node --check src/app.js && node --check src/rtc.js && node --check src/icons.js",
+    "check": "node --check main.js && node --check preload.js && node --check src/app.js && node --check src/rtc.js && node --check src/icons.js && node --check src/phone.js && node --check src/phone-link.js && node --check scripts/release.js",
     "dist:win": "node scripts/build-win.js",
     "dist:linux": "npm run vendor && electron-builder --linux AppImage",
     "dist:mac": "npm run vendor && electron-builder --mac"
@@ -21,7 +21,8 @@
   "devDependencies": {
     "electron": "45.2.3",
     "electron-builder": "26.18.0",
-    "peerjs": "1.5.5"
+    "peerjs": "1.5.5",
+    "qrcode-generator": "^1.4.4"
   },
   "build": {
     "appId": "com.wecord.app",
@@ -39,7 +40,12 @@
       "!src/**/*.map"
     ],
     "asar": true,
-    "publish": { "provider": "github", "owner": "KaioFAnjos", "repo": "Wecord", "releaseType": "release" },
+    "publish": {
+      "provider": "github",
+      "owner": "KaioFAnjos",
+      "repo": "Wecord",
+      "releaseType": "release"
+    },
     "win": {
       "target": [
         {

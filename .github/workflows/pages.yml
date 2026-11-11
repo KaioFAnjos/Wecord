@@ -1,0 +1,35 @@
+name: Site (GitHub Pages)
+
+# Publica a pasta src/ em https://kaiofanjos.github.io/Wecord/
+#   phone.html → página do celular (câmera/microfone para o PC)
+#   index.html → versão navegador do Wecord
+
+on:
+  push:
+    branches: [main]
+    paths: ['src/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: src
+      - id: deployment
+        uses: actions/deploy-pages@v4

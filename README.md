@@ -43,6 +43,20 @@ Na chamada:
 
 Passe o mouse sobre um vídeo para **fixar**, ver em **tela cheia** (ou dê dois cliques) e ajustar o **volume** daquela pessoa ou da tela dela.
 
+### Sem câmera ou microfone? Use o celular
+
+O iPhone (ou Android) pode ser a câmera e o microfone do Wecord no PC, sem instalar nada no celular:
+
+1. No Wecord do PC, clique em **"Sem câmera ou microfone? Use o celular"** (tela inicial) ou em *Ajustes → Usar o celular como câmera e microfone*.
+2. Aponte a **câmera do iPhone** para o QR code e toque no link (abre no Safari).
+3. Toque em **Começar** e permita câmera e microfone.
+
+No celular dá para **virar a câmera** (frontal/traseira), desligá-la, ou usar a **Tela preta**: a câmera desliga, a tela fica escura para economizar bateria e o microfone continua. Para silenciar, use o botão de microfone no PC.
+
+- O Safari precisa ficar **aberto e com a tela ligada**: o iOS não deixa sites usarem o microfone em segundo plano. Se o celular bloquear, volte ao Safari que reconecta sozinho.
+- Deixe o celular carregando, e prefira o mesmo Wi-Fi do PC.
+- O link é fixo: dá para salvar nos favoritos do Safari. Da próxima vez que abrir o Wecord, é só abrir o favorito e tocar em Começar.
+
 ### Dicas
 
 - **Som do computador com eco**: no Windows, o som compartilhado é tudo o que toca no PC, inclusive a voz da outra pessoa. Se ela ouvir eco da própria voz, desligue "Compartilhar o som do computador" no seletor.
@@ -88,7 +102,16 @@ preload.js     Ponte segura (contextIsolation) com a interface
 src/rtc.js     Rede: sinalização PeerJS + um RTCPeerConnection por pessoa (perfect negotiation)
 src/app.js     Interface: tela inicial, chamada, seletor de tela, chat, configurações
 src/styles.css Tema escuro
+src/phone-link.js  PC: recebe câmera/microfone do celular (peer wecord-v1-cam-CODIGO) + QR code
+src/phone.*    Página do celular, publicada no GitHub Pages (kaiofanjos.github.io/Wecord/phone.html)
 ```
+
+**Celular como câmera:** o PC registra o peer `wecord-v1-cam-<código>` (código salvo nas configurações).
+O celular abre `phone.html#c=<código>`, conecta um canal de controle e faz uma chamada enviando
+câmera + microfone. O PC usa clones dessas faixas como se fossem dispositivos locais (opção
+"Celular" nas listas de dispositivos) e repassa para a sala normalmente. O PC manda `need` para o
+celular ligar/desligar a câmera conforme o botão de câmera do Wecord. O workflow `pages.yml`
+publica `src/` no GitHub Pages a cada push na `main`.
 
 **Salas:** cada pessoa tem um ID aleatório no servidor de sinalização. A sala é um segundo ID
 (`wecord-v1-room-CODIGO`) mantido por alguém dentro dela. Quem entra pergunta a esse "lobby" quem
