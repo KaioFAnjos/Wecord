@@ -1,7 +1,7 @@
 {
   "name": "wecord",
   "productName": "Wecord",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Chamadas de vídeo P2P com compartilhamento de tela, janelas e webcam",
   "main": "main.js",
   "author": "Kaio Felipe",
