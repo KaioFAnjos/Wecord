@@ -2,10 +2,17 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e1014">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Wecord">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: mediastream:; connect-src 'self' https: wss: ws:;">
   <title>Wecord</title>
   <link rel="icon" href="logo.svg">
+  <link rel="apple-touch-icon" href="icon-512.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -31,6 +38,7 @@
         <div class="preview-controls">
           <button class="round-btn" id="pre-mic" title="Microfone"><span data-icon="mic"></span></button>
           <button class="round-btn" id="pre-cam" title="Câmera"><span data-icon="video"></span></button>
+          <button class="round-btn ghost mobile-only" id="pre-flip" title="Virar a câmera"><span data-icon="flip"></span></button>
           <button class="round-btn ghost" id="pre-settings" title="Configurações"><span data-icon="settings"></span></button>
         </div>
         <button class="link-btn" id="pre-phone" type="button"><span data-icon="smartphone"></span><span id="pre-phone-text">Sem câmera ou microfone? Use o celular</span></button>
@@ -52,6 +60,10 @@
         </form>
         <p class="hint">Quem criou a sala te passa o código de 6 caracteres.</p>
         <p class="error-text" id="home-error" hidden></p>
+        <div class="mobile-note mobile-only">
+          <p><b>Só quer usar este celular como câmera e microfone do PC?</b> No Wecord do PC, clique em "Use o celular" e escaneie o QR code com a câmera.</p>
+          <p class="ios-only" id="a2hs-tip">Dica: no Safari, toque em <b>Compartilhar → Adicionar à Tela de Início</b> para abrir o Wecord como um app.</p>
+        </div>
       </div>
     </div>
 
@@ -100,6 +112,7 @@
     <div class="controls-main">
       <button class="ctrl" id="btn-mic" title="Microfone (M)"><span class="ctrl-ico"></span><span class="ctrl-label">Microfone</span></button>
       <button class="ctrl" id="btn-cam" title="Câmera (V)"><span class="ctrl-ico"></span><span class="ctrl-label">Câmera</span></button>
+      <button class="ctrl mobile-only" id="btn-flip" title="Virar a câmera"><span class="ctrl-ico" data-icon="flip"></span><span class="ctrl-label">Virar</span></button>
       <button class="ctrl" id="btn-share" title="Compartilhar tela (S)"><span class="ctrl-ico"></span><span class="ctrl-label">Tela</span></button>
       <button class="ctrl" id="btn-deaf" title="Silenciar tudo (D)"><span class="ctrl-ico"></span><span class="ctrl-label">Áudio</span></button>
       <button class="ctrl" id="btn-chat" title="Chat"><span class="ctrl-ico" data-icon="chat"></span><span class="ctrl-label">Chat</span><i class="badge-dot" id="chat-badge" hidden></i></button>
@@ -241,6 +254,7 @@
   <button class="btn small primary" id="btn-update" type="button" hidden>Reiniciar e atualizar</button>
   <button class="icon-btn small" id="btn-update-later" type="button" title="Depois (atualiza quando fechar o Wecord)" hidden><span data-icon="x"></span></button>
 </div>
+<button id="audio-unlock" class="audio-unlock" type="button" hidden><span data-icon="volume"></span>Toque para ativar o som</button>
 <div id="toasts" aria-live="polite"></div>
 <div id="audio-sink" hidden></div>
 

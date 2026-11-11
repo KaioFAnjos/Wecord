@@ -1,0 +1,11 @@
+{
+  "name": "Wecord",
+  "short_name": "Wecord",
+  "description": "Chamadas de vídeo com compartilhamento de tela",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0e1014",
+  "theme_color": "#0e1014",
+  "icons": [{ "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }]
+}

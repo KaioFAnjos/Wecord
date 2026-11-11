@@ -9,6 +9,15 @@
   const { PhoneLink, newCode, qrSvg } = window.WecordPhone;
   const canShareSystemAudio = !native || native.platform === 'win32';
 
+  // Modo celular: site aberto num telefone/tablet (tela de toque pequena)
+  const isIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isMobile = !native && matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 820;
+  const canShareScreen = !isMobile && !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+  const isStandalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  if (isMobile) document.documentElement.classList.add('mobile');
+  if (isIOS) document.documentElement.classList.add('ios');
+  if (isStandalone) document.documentElement.classList.add('standalone');
+
   /* ================================================================ */
   /* Configurações                                                     */
   /* ================================================================ */
@@ -18,7 +27,7 @@
     quality: '1080p30', hint: 'motion', shareAudio: true,
     turnUrl: '', turnUser: '', turnPass: '',
     serverHost: '', serverPort: '443', serverPath: '/',
-    phoneCode: '',
+    phoneCode: '', facing: 'user',
   };
   const settings = (() => {
     try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem('wecord.settings') || '{}') }; } catch { return { ...DEFAULTS }; }
@@ -146,6 +155,7 @@
   });
   const camConstraints = () => ({
     deviceId: settings.camId && settings.camId !== 'phone' ? { exact: settings.camId } : undefined,
+    facingMode: isMobile && !settings.camId ? settings.facing : undefined,
     width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30, max: 30 },
   });
 
@@ -245,6 +255,33 @@
       toast('Não consegui trocar o dispositivo: ' + friendlyError(e), 'error');
     }
   }
+
+  /* troca câmera frontal/traseira (celular). O iOS só deixa uma câmera aberta por vez. */
+  async function flipCam() {
+    settings.facing = settings.facing === 'environment' ? 'user' : 'environment';
+    settings.camId = '';
+    saveSettings();
+    const old = local.cam;
+    if (!old) { render(); return; }
+    local.cam = null; // evita que o 'ended' da faixa antiga desligue a câmera
+    old.stop();
+    try {
+      const t = await getTrack('video');
+      t.contentHint = 'motion';
+      t.addEventListener('ended', () => { if (local.cam === t) stopCam(); });
+      local.main.removeTrack(old);
+      local.main.addTrack(t);
+      local.cam = t;
+      if (room) room.replaceTrack(old, t);
+    } catch (e) {
+      local.main.removeTrack(old);
+      if (room) { room.removeTrack(old); room.setState({ cam: false }); }
+      local.camOn = false;
+      toast('Câmera: ' + friendlyError(e), 'error');
+    }
+    render();
+  }
+  const mirrorMe = () => !(isMobile && settings.facing === 'environment');
 
   async function toggleMic() {
     if (deafened) { setDeaf(false); if (local.micOn) return; }
@@ -510,6 +547,18 @@
     stream.addEventListener('removetrack', render);
   }
 
+  // O Safari (iPhone) pode bloquear o som até um toque na tela: mostra um botão para liberar
+  function playMedia(el) {
+    const pr = el.play();
+    if (pr && pr.catch) pr.catch((e) => { if (e && e.name === 'NotAllowedError') $('#audio-unlock').hidden = false; });
+  }
+  function unlockAudio() {
+    $('#audio-unlock').hidden = true;
+    ctx();
+    for (const p of people.values()) [p.audioMain, p.audioScreen].forEach((a) => a && playMedia(a));
+    $$('video').forEach((v) => v.srcObject && v.paused && playMedia(v));
+  }
+
   function applyAudio(p) {
     if (p.id === 'me') return;
     for (const kind of ['main', 'screen']) {
@@ -527,7 +576,7 @@
         p[key] = a;
         if (settings.outId && a.setSinkId) a.setSinkId(settings.outId).catch(() => {});
       }
-      if (a.srcObject !== stream) { a.srcObject = stream; a.play().catch(() => {}); }
+      if (a.srcObject !== stream) { a.srcObject = stream; playMedia(a); }
       a.volume = kind === 'main' ? p.volume : p.screenVolume;
       a.muted = deafened;
     }
@@ -550,8 +599,11 @@
         <button class="tool full" title="Tela cheia">${icon('maximize')}</button>
       </div>`;
     const full = () => {
-      if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-      else el.requestFullscreen().catch(() => {});
+      if (document.fullscreenElement) { document.exitFullscreen().catch(() => {}); return; }
+      if (el.requestFullscreen) { el.requestFullscreen().catch(() => {}); return; }
+      if (el.webkitRequestFullscreen) { el.webkitRequestFullscreen(); return; } // iPad
+      const v = el.querySelector('video'); // iPhone: só o <video> entra em tela cheia (com zoom de pinça)
+      if (v && v.webkitEnterFullscreen) { try { v.webkitEnterFullscreen(); } catch { /* ignore */ } }
     };
     el.querySelector('.full').addEventListener('click', (e) => { e.stopPropagation(); full(); });
     el.addEventListener('dblclick', full);
@@ -586,7 +638,7 @@
     if (me) showVideo = kind === 'screen' ? !!vt : !!local.cam;
     else showVideo = !!vt && !vt.muted && (kind === 'screen' || p.state.cam !== false);
     el.classList.toggle('has-video', showVideo);
-    el.classList.toggle('mirror', me && kind === 'cam');
+    el.classList.toggle('mirror', me && kind === 'cam' && mirrorMe());
     el.classList.toggle('is-me', me);
     el.classList.toggle('pinned', pinned === el.dataset.key);
     el.querySelector('.pin').classList.toggle('active', pinned === el.dataset.key);
@@ -682,7 +734,12 @@
     const screenKeys = order.filter((el) => el.classList.contains('tile-screen') && el.dataset.key !== 'me:screen').map((el) => el.dataset.key);
     if (screenKeys.length && !screenKeys.includes(lastScreenKey)) lastScreenKey = screenKeys[0];
     if (!screenKeys.length) lastScreenKey = null;
-    const featuredKey = (pinned && tiles.has(pinned) && pinned) || lastScreenKey;
+    let featuredKey = (pinned && tiles.has(pinned) && pinned) || lastScreenKey;
+    // no celular, numa chamada a dois, a outra pessoa ocupa a tela e você fica pequeno embaixo
+    if (!featuredKey && isMobile && order.length === 2) {
+      const other = order.find((el) => el.dataset.key !== 'me:cam');
+      if (other) featuredKey = other.dataset.key;
+    }
     const featured = featuredKey ? tiles.get(featuredKey) : null;
 
     if (featured && order.length > 1) {
@@ -699,7 +756,7 @@
       sizeGrid();
     }
     // garante que vídeos movidos continuem tocando
-    order.forEach((el) => { const v = el.querySelector('video'); if (v.srcObject && v.paused) v.play().catch(() => {}); });
+    order.forEach((el) => { const v = el.querySelector('video'); if (v.srcObject && v.paused) playMedia(v); });
   }
 
   function sizeGrid() {
@@ -756,7 +813,7 @@
     pc.classList.toggle('off', !local.cam);
     const pt = $('#preview-tile');
     pt.classList.toggle('has-video', !!local.cam);
-    pt.classList.add('mirror');
+    pt.classList.toggle('mirror', mirrorMe());
     const pv = $('#preview-video');
     if (pv.srcObject !== local.main) pv.srcObject = local.main;
     const pa = $('#preview-avatar');
@@ -893,6 +950,7 @@
     unread = 0;
     $('#chat-badge').hidden = true;
     showView('call');
+    keepAwake(true);
     try { history.replaceState(null, '', '#' + r.code); } catch { /* ignore */ }
     if (mode === 'create') {
       copyText(formatCode(r.code)).then((ok) => ok && toast('Código ' + formatCode(r.code) + ' copiado — é só colar no WhatsApp!', 'ok', 4500));
@@ -974,11 +1032,43 @@
     lastScreenKey = null;
     if (deafened) setDeaf(false);
     closeChat();
+    keepAwake(false);
     try { history.replaceState(null, '', location.pathname); } catch { /* ignore */ }
     showView('home');
     Sound.leave();
     render();
   }
+
+  /* ---------- tela ligada durante a chamada + volta do segundo plano (celular) ---------- */
+  let wakeLock = null;
+  async function keepAwake(on) {
+    try {
+      if (on && navigator.wakeLock && (!wakeLock || wakeLock.released)) wakeLock = await navigator.wakeLock.request('screen');
+      else if (!on && wakeLock) { const w = wakeLock; wakeLock = null; await w.release(); }
+    } catch { /* ignore */ }
+  }
+  let hiddenWith = null;
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'hidden') { hiddenWith = { cam: !!local.cam }; return; }
+    if (room) keepAwake(true);
+    if (audioCtx && audioCtx.state !== 'running') audioCtx.resume().catch(() => {});
+    // o iOS encerra câmera/microfone de sites em segundo plano: religa o que estava ligado
+    const was = hiddenWith || { cam: false };
+    hiddenWith = null;
+    let restored = false;
+    if (local.micOn && !(local.mic && local.mic.readyState === 'live')) {
+      if (local.mic) { const old = local.mic; local.mic = null; local.main.removeTrack(old); if (room) room.removeTrack(old); }
+      if (await ensureMic()) restored = true;
+      if (room) room.setState({ mic: local.micOn && !deafened });
+    }
+    if (was.cam && !(local.cam && local.cam.readyState === 'live')) {
+      if (local.cam) stopCam();
+      if (await startCam()) restored = true;
+      if (room) room.setState({ cam: !!local.cam });
+    }
+    if (restored && room) toast('Câmera e microfone religados', 'ok');
+    render();
+  });
 
   function copyRoomCode() {
     if (!room) return;
@@ -1253,6 +1343,23 @@
   $('#pre-mic').addEventListener('click', toggleMic);
   $('#pre-cam').addEventListener('click', toggleCam);
   $('#pre-settings').addEventListener('click', openSettings);
+  $('#btn-flip').addEventListener('click', flipCam);
+  $('#pre-flip').addEventListener('click', flipCam);
+  $('#audio-unlock').addEventListener('click', unlockAudio);
+  $('#btn-share').hidden = !canShareScreen;
+
+  // celular deitado: os controles somem sozinhos para a tela compartilhada ocupar tudo; um toque traz de volta
+  if (isMobile) {
+    let idleTimer = 0;
+    const wake = () => {
+      $('#call').classList.remove('idle');
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => $('#call').classList.add('idle'), 4000);
+    };
+    $('#call').addEventListener('pointerdown', wake);
+    addEventListener('orientationchange', wake);
+    wake();
+  }
 
   $('#btn-create').addEventListener('click', () => enterRoom('create'));
   $('#join-form').addEventListener('submit', (e) => {
@@ -1281,7 +1388,7 @@
     const k = e.key.toLowerCase();
     if (k === 'm') toggleMic();
     else if (k === 'v') toggleCam();
-    else if (k === 's') openPicker();
+    else if (k === 's' && canShareScreen) openPicker();
     else if (k === 'd') setDeaf(!deafened);
     else return;
     e.preventDefault();

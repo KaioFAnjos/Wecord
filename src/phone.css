@@ -56,3 +56,4 @@ p { margin: 8px 0; }
 .black-info small { color: #2a2a2a; }
 .black-info .dot { width: 10px; height: 10px; border-radius: 50%; background: #0b3d1e; margin: 0 auto; }
 .black-info .dot.speaking { background: #136b34; }
+a { color: var(--accent-2); }

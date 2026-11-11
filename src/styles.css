@@ -349,3 +349,90 @@ select { cursor: pointer; }
 @keyframes pulse { 50% { opacity: .35; } }
 #phone-url { flex: 1; min-width: 0; height: 34px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2); font: inherit; font-size: 12px; }
 @media (max-width: 560px) { .phone-pair { flex-direction: column; } }
+
+/* ================================================================ */
+/* Modo celular (site aberto no telefone)                            */
+/* ================================================================ */
+.mobile-only, .ios-only { display: none !important; }
+.mobile .mobile-only { display: revert !important; }
+.mobile .ctrl.mobile-only { display: flex !important; }
+.mobile .round-btn.mobile-only { display: grid !important; }
+.mobile.ios:not(.standalone) .ios-only { display: block !important; }
+.mobile #pre-phone, .mobile #set-phone, .mobile #btn-deaf { display: none !important; }
+
+.audio-unlock {
+  position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 95;
+  display: inline-flex; align-items: center; gap: 10px; height: 48px; padding: 0 20px; border-radius: 99px; border: 0;
+  background: linear-gradient(135deg, var(--accent), var(--pink)); color: #fff; font-weight: 700; font-size: 15px;
+  box-shadow: var(--shadow); cursor: pointer; animation: toast-in .2s ease-out;
+}
+.mobile-note { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); font-size: 13px; }
+.mobile-note p { margin: 0; }
+.mobile-note b { color: var(--text); }
+
+.mobile body { -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
+.mobile .field input, .mobile .field select, .mobile .code-input, .mobile .chat-form input { font-size: 16px; } /* evita o zoom do iOS ao focar */
+.mobile * { -webkit-tap-highlight-color: transparent; }
+
+/* tela inicial */
+.mobile .home-wrap { padding: calc(16px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom)); gap: 18px; }
+.mobile .brand-logo { width: 44px; height: 44px; border-radius: 13px; }
+.mobile .brand h1 { font-size: 23px; }
+.mobile .brand p { font-size: 13px; }
+.mobile .home-grid { grid-template-columns: 1fr; gap: 16px; }
+.mobile .card { padding: 18px; border-radius: 16px; }
+.mobile .home-foot { flex-wrap: wrap; font-size: 11.5px; }
+
+/* chamada */
+.mobile #call { padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left); }
+.mobile .topbar { height: 50px; padding: 0 10px; gap: 8px; }
+.mobile .topbar-logo { display: none; }
+.mobile .status span { display: none; }
+.mobile #stage-area { padding: 8px; gap: 8px; }
+.mobile #stage-area.focus-mode { flex-direction: column; }
+.mobile #strip { width: auto; height: 108px; flex-direction: row; overflow-x: auto; overflow-y: hidden; gap: 8px; }
+.mobile #strip > .tile { height: 100%; aspect-ratio: 3 / 4; }
+.mobile #strip > .tile.tile-screen { aspect-ratio: 16 / 9; }
+.mobile .tile-name { left: 6px; bottom: 6px; height: 24px; padding: 0 8px; font-size: 12px; }
+.mobile #strip .tile-badges, .mobile #strip .tile-tools { display: none; }
+.mobile .tile-tools { opacity: 1; }
+.mobile .tile .vol { display: none; }       /* o iPhone não deixa mudar volume por site */
+.mobile .tile .tool.pin { display: none; }
+.mobile .tool { width: 38px; height: 38px; }
+.mobile .controls { padding: 8px 8px calc(10px + env(safe-area-inset-bottom)); justify-content: center; }
+.mobile .controls-side { display: none; }
+.mobile .controls-main { gap: 6px; }
+.mobile .ctrl { width: 54px; height: 54px; border-radius: 16px; }
+.mobile .ctrl-label { font-size: 10px; }
+.mobile .ctrl.danger { margin-left: 4px; }
+.mobile .badge-dot { right: 10px; }
+.mobile .invite { padding: 12px; }
+.mobile .big-code { font-size: 28px; }
+
+/* chat em tela cheia */
+.mobile #chat-panel { position: fixed; inset: 0; z-index: 60; width: auto; border-left: 0; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.mobile .chat-head { padding: 8px 8px 8px 16px; }
+.mobile .chat-head .icon-btn { width: 44px; height: 44px; }
+
+/* modais como "gaveta" */
+.mobile .modal { width: calc(100vw - 16px); max-height: calc(100dvh - 24px - env(safe-area-inset-top)); border-radius: 18px; }
+.mobile .modal-body { padding: 4px 16px 14px; }
+.mobile .modal-head { padding: 14px 10px 6px 16px; }
+.mobile .modal-foot { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
+.mobile #toasts { top: calc(58px + env(safe-area-inset-top)); width: calc(100vw - 24px); }
+
+/* celular deitado: tela compartilhada ocupa tudo, controles flutuam e somem */
+@media (orientation: landscape) and (max-height: 560px) {
+  .mobile #call { padding: 0; }
+  .mobile #call .topbar { display: none; }
+  .mobile #stage-area { padding: 0; }
+  .mobile #stage-area.focus-mode #strip { display: none; }
+  .mobile #stage > .tile { border-radius: 0; border: 0; }
+  .mobile #call .controls {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 5;
+    padding: 18px 8px calc(8px + env(safe-area-inset-bottom));
+    background: linear-gradient(transparent, rgba(0, 0, 0, .75)); transition: opacity .25s;
+  }
+  .mobile #call.idle .controls { opacity: 0; pointer-events: none; }
+  .mobile #stage-area.grid-mode #grid { padding-bottom: 72px; }
+}

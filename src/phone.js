@@ -348,8 +348,9 @@
   });
 
   if (!code) {
-    fail('Link incompleto', 'Abra o Wecord no PC, vá em Ajustes → "Usar celular como câmera" e escaneie o QR code com a câmera do iPhone.');
-    $('#btn-retry').hidden = true;
+    fail('Link incompleto', 'Para usar o celular como câmera do PC: abra o Wecord no PC, clique em "Use o celular" e escaneie o QR code com a câmera do iPhone. Para usar o Wecord completo no celular, toque abaixo.');
+    $('#btn-retry').textContent = 'Abrir o Wecord completo';
+    $('#btn-retry').onclick = () => { location.href = './'; };
   } else {
     show('step-start');
     status('Pronto para começar');
