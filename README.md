@@ -43,6 +43,16 @@ Na chamada:
 
 Passe o mouse sobre um vídeo para **fixar**, ver em **tela cheia** (ou dê dois cliques) e ajustar o **volume** daquela pessoa ou da tela dela.
 
+### Wecord no celular
+
+Abra **https://kaiofanjos.github.io/Wecord/** no Safari (iPhone) ou no Chrome (Android). Não precisa instalar nada. Dá para entrar na sala pelo código, **ver a tela compartilhada**, ver e ouvir as pessoas, falar com câmera e microfone, virar a câmera (frontal/traseira) e usar o chat.
+
+- **Deite o celular** para a tela compartilhada ocupar tudo. Os botões somem sozinhos; um toque traz de volta. O botão de tela cheia permite dar zoom com dois dedos.
+- No iPhone, toque em **Compartilhar → Adicionar à Tela de Início** para o Wecord ganhar um ícone e abrir como app.
+- O celular não consegue **compartilhar a própria tela** (o iOS e o Android não permitem isso em sites).
+- Se você sair do Safari ou bloquear a tela, o iOS corta câmera e microfone. Ao voltar, o Wecord religa sozinho.
+- Se aparecer **"Toque para ativar o som"**, toque: o iPhone às vezes exige um toque antes de tocar áudio.
+
 ### Sem câmera ou microfone? Use o celular
 
 O iPhone (ou Android) pode ser a câmera e o microfone do Wecord no PC, sem instalar nada no celular:
